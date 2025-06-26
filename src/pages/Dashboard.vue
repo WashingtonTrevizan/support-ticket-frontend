@@ -225,7 +225,10 @@
           <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
             <h3 class="text-lg font-medium text-gray-900 mb-4">Ações Rápidas</h3>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <button class="bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition-colors duration-200">
+              <button 
+                @click="openNewTicketModal"
+                class="bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition-colors duration-200"
+              >
                 ➕ Novo Ticket
               </button>
               <button class="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition-colors duration-200">
@@ -311,6 +314,139 @@
 
       </div>
     </main>
+
+    <!-- Modal de Novo Ticket -->
+    <div 
+      v-if="showNewTicketModal" 
+      class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+      @click="closeNewTicketModal"
+    >
+      <div class="relative top-20 mx-auto p-5 border w-full max-w-lg bg-white rounded-md shadow-lg">
+        <div @click.stop>
+          <!-- Header do Modal -->
+          <div class="flex justify-between items-center pb-3 border-b">
+            <h3 class="text-lg font-semibold text-gray-900">Criar Novo Ticket</h3>
+            <button 
+              @click="closeNewTicketModal"
+              class="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <span class="sr-only">Fechar</span>
+              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Formulário -->
+          <form @submit.prevent="handleCreateTicket" class="pt-4">
+            <!-- Campo Título -->
+            <div class="mb-4">
+              <label for="title" class="block text-sm font-medium text-gray-700 mb-2">
+                Título *
+              </label>
+              <input
+                id="title"
+                v-model="newTicket.title"
+                type="text"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Digite o título do ticket"
+              />
+            </div>
+
+            <!-- Campo Descrição -->
+            <div class="mb-4">
+              <label for="description" class="block text-sm font-medium text-gray-700 mb-2">
+                Descrição *
+              </label>
+              <textarea
+                id="description"
+                v-model="newTicket.description"
+                required
+                rows="4"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Descreva o problema ou solicitação"
+              ></textarea>
+            </div>
+
+            <!-- Campo Prioridade -->
+            <div class="mb-6">
+              <label for="priority" class="block text-sm font-medium text-gray-700 mb-2">
+                Prioridade *
+              </label>
+              <select
+                id="priority"
+                v-model="newTicket.priority"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                <option value="">Selecione a prioridade</option>
+                <option value="low">🟢 Baixa</option>
+                <option value="medium">🟡 Média</option>
+                <option value="high">🔴 Alta</option>
+              </select>
+            </div>
+
+            <!-- Botões -->
+            <div class="flex justify-end space-x-3">
+              <button
+                type="button"
+                @click="closeNewTicketModal"
+                :disabled="creatingTicket"
+                class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                :disabled="creatingTicket"
+                class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center"
+              >
+                <span v-if="creatingTicket" class="mr-2">
+                  <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </span>
+                {{ creatingTicket ? 'Criando...' : 'Criar Ticket' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notificação Toast -->
+    <div 
+      v-if="showNotification"
+      class="fixed top-4 right-4 z-50 max-w-sm w-full bg-white rounded-lg shadow-lg border-l-4 transform transition-all duration-300 ease-in-out"
+      :class="notificationType === 'success' ? 'border-green-500' : 'border-red-500'"
+    >
+      <div class="p-4">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <span v-if="notificationType === 'success'" class="text-green-500 text-xl">✅</span>
+            <span v-else class="text-red-500 text-xl">❌</span>
+          </div>
+          <div class="ml-3 flex-1">
+            <p :class="notificationType === 'success' ? 'text-green-800' : 'text-red-800'" class="text-sm font-medium">
+              {{ notificationMessage }}
+            </p>
+          </div>
+          <div class="ml-4 flex-shrink-0">
+            <button
+              @click="hideNotification"
+              class="inline-flex text-gray-400 hover:text-gray-600"
+            >
+              <span class="sr-only">Fechar</span>
+              <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -327,6 +463,20 @@ const logoutLoading = ref(false)
 const statsLoading = ref(false)
 const statsError = ref('')
 const recentTicketsLoading = ref(false)
+
+// Estado do modal de novo ticket
+const showNewTicketModal = ref(false)
+const creatingTicket = ref(false)
+const newTicket = ref({
+  title: '',
+  description: '',
+  priority: '' as 'low' | 'medium' | 'high' | ''
+})
+
+// Estado para notificações
+const showNotification = ref(false)
+const notificationMessage = ref('')
+const notificationType = ref<'success' | 'error'>('success')
 
 // Dados do usuário (serão carregados do localStorage/token)
 const userRole = ref('client')
@@ -500,6 +650,113 @@ const handleLogout = async () => {
     router.push('/login')
   } finally {
     logoutLoading.value = false
+  }
+}
+
+// Funções do modal de novo ticket
+const openNewTicketModal = () => {
+  showNewTicketModal.value = true
+  // Resetar formulário
+  newTicket.value = {
+    title: '',
+    description: '',
+    priority: ''
+  }
+}
+
+const closeNewTicketModal = () => {
+  showNewTicketModal.value = false
+  // Resetar formulário
+  newTicket.value = {
+    title: '',
+    description: '',
+    priority: ''
+  }
+}
+
+// Função para mostrar notificações
+const showNotificationMessage = (message: string, type: 'success' | 'error' = 'success') => {
+  notificationMessage.value = message
+  notificationType.value = type
+  showNotification.value = true
+  
+  // Auto-hide após 5 segundos
+  setTimeout(() => {
+    showNotification.value = false
+  }, 5000)
+}
+
+const hideNotification = () => {
+  showNotification.value = false
+}
+
+const handleCreateTicket = async () => {
+  try {
+    creatingTicket.value = true
+    
+    console.log('Criando novo ticket:', newTicket.value)
+    
+    // Validar campos obrigatórios
+    if (!newTicket.value.title.trim()) {
+      showNotificationMessage('Por favor, digite um título para o ticket.', 'error')
+      return
+    }
+    
+    if (!newTicket.value.description.trim()) {
+      showNotificationMessage('Por favor, digite uma descrição para o ticket.', 'error')
+      return
+    }
+    
+    if (!newTicket.value.priority) {
+      showNotificationMessage('Por favor, selecione uma prioridade para o ticket.', 'error')
+      return
+    }
+    
+    // Preparar dados do ticket
+    const ticketData = {
+      title: newTicket.value.title.trim(),
+      description: newTicket.value.description.trim(),
+      priority: newTicket.value.priority,
+      status: 'open' as const
+    }
+    
+    // Criar ticket usando o serviço
+    await ticketsService.createTicket(ticketData)
+    
+    console.log('Ticket criado com sucesso!')
+    
+    // Fechar modal
+    closeNewTicketModal()
+    
+    // Recarregar dados (estatísticas e tickets recentes)
+    await Promise.all([
+      loadTicketStats(),
+      loadRecentTickets()
+    ])
+    
+    // Mostrar mensagem de sucesso
+    showNotificationMessage('Ticket criado com sucesso! 🎉', 'success')
+    
+  } catch (error: any) {
+    console.error('Erro ao criar ticket:', error)
+    
+    // Tratar diferentes tipos de erro
+    let errorMessage = 'Erro ao criar ticket. Tente novamente.'
+    
+    if (error.response?.status === 401) {
+      errorMessage = 'Sessão expirada. Faça login novamente.'
+    } else if (error.response?.status === 403) {
+      errorMessage = 'Sem permissão para criar tickets.'
+    } else if (error.response?.status === 422) {
+      errorMessage = 'Dados inválidos. Verifique os campos e tente novamente.'
+    } else if (error.response?.data?.message) {
+      errorMessage = error.response.data.message
+    }
+    
+    showNotificationMessage(errorMessage, 'error')
+    
+  } finally {
+    creatingTicket.value = false
   }
 }
 

@@ -112,7 +112,7 @@ export const ticketsService = {
   },
 
   // Criar novo ticket
-  async createTicket(ticketData: Omit<Ticket, 'id' | 'created_at' | 'updated_at'>): Promise<Ticket> {
+  async createTicket(ticketData: Omit<Ticket, 'uuid' | 'createdAt' | 'updatedAt' | 'UserUuid' | 'CompanyUuid' | 'creator'>): Promise<Ticket> {
     try {
       console.log('Criando novo ticket:', ticketData)
       const response = await api.post('/api/v1/tickets', ticketData)
