@@ -231,7 +231,10 @@
               >
                 ➕ Novo Ticket
               </button>
-              <button class="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition-colors duration-200">
+              <button 
+                @click="activeTab = 'tickets'"
+                class="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition-colors duration-200"
+              >
                 📋 Ver Todos os Tickets
               </button>
               <button class="bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition-colors duration-200">
@@ -301,9 +304,165 @@
         </div>
 
         <!-- Tickets Tab -->
-        <div v-if="activeTab === 'tickets'" class="bg-white shadow-lg rounded-lg p-6">
-          <h2 class="text-2xl font-bold text-gray-900 mb-4">Gerenciar Tickets</h2>
-          <p class="text-gray-600">Funcionalidade de tickets em desenvolvimento...</p>
+        <div v-if="activeTab === 'tickets'">
+          <div class="mb-8">
+            <div class="flex justify-between items-center">
+              <div>
+                <h2 class="text-3xl font-bold text-gray-900">Gerenciar Tickets</h2>
+                <p class="mt-2 text-gray-600">Visualize e gerencie todos os tickets do sistema</p>
+              </div>
+              <div class="flex space-x-3">
+                <button 
+                  @click="openNewTicketModal"
+                  class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors duration-200 flex items-center"
+                >
+                  <span class="mr-2">➕</span>
+                  Novo Ticket
+                </button>
+                <button 
+                  @click="loadAllTickets"
+                  :disabled="allTicketsLoading"
+                  class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center"
+                >
+                  <span v-if="allTicketsLoading" class="mr-2">
+                    <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  </span>
+                  <span class="mr-2">🔄</span>
+                  {{ allTicketsLoading ? 'Carregando...' : 'Atualizar' }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Container dos Tickets -->
+          <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+            <!-- Indicador de carregamento -->
+            <div v-if="allTicketsLoading" class="flex justify-center items-center p-12">
+              <div class="flex items-center space-x-3">
+                <svg class="animate-spin h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-gray-600 text-lg">Carregando todos os tickets...</span>
+              </div>
+            </div>
+
+            <!-- Mensagem de erro -->
+            <div v-else-if="ticketsError" class="p-8">
+              <div class="bg-red-50 border border-red-200 rounded-lg p-6">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0">
+                    <span class="text-red-500 text-xl">⚠️</span>
+                  </div>
+                  <div class="ml-3">
+                    <h3 class="text-lg font-medium text-red-800">Erro ao carregar tickets</h3>
+                    <p class="text-sm text-red-700 mt-1">{{ ticketsError }}</p>
+                    <button 
+                      @click="loadAllTickets" 
+                      class="mt-3 bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700 transition-colors"
+                    >
+                      Tentar novamente
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tabela de Tickets -->
+            <div v-else-if="allTickets.length > 0" class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      ID / Título
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Descrição
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Prioridade
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Autor
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Criado em
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  <tr v-for="ticket in allTickets" :key="ticket.id" class="hover:bg-gray-50 transition-colors">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div>
+                        <div class="text-xs text-gray-500 font-mono">#{{ ticket.id.substring(0, 8) }}</div>
+                        <div class="text-sm font-medium text-gray-900 mt-1">{{ ticket.title }}</div>
+                      </div>
+                    </td>
+                    <td class="px-6 py-4">
+                      <div class="text-sm text-gray-900 max-w-md">
+                        <p class="line-clamp-2">{{ ticket.description }}</p>
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span 
+                        :class="getStatusClass(ticket.status)"
+                        class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
+                      >
+                        {{ ticket.status }}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span 
+                        :class="getPriorityClass(ticket.priority)"
+                        class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
+                      >
+                        {{ ticket.priority }}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="flex items-center">
+                        <div class="flex-shrink-0 h-8 w-8">
+                          <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                            <span class="text-xs font-medium text-gray-600">
+                              {{ ticket.author.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) }}
+                            </span>
+                          </div>
+                        </div>
+                        <div class="ml-3">
+                          <div class="text-sm font-medium text-gray-900">{{ ticket.author }}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {{ ticket.createdAt }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Mensagem quando não há tickets -->
+            <div v-else class="text-center p-12">
+              <div class="flex flex-col items-center">
+                <span class="text-6xl mb-4">📋</span>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Nenhum ticket encontrado</h3>
+                <p class="text-gray-500 mb-6">Crie seu primeiro ticket para começar!</p>
+                <button 
+                  @click="openNewTicketModal"
+                  class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors duration-200 flex items-center"
+                >
+                  <span class="mr-2">➕</span>
+                  Criar Primeiro Ticket
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Profile Tab -->
@@ -451,7 +610,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ticketsService, { type TicketStats } from '../services/ticketsService'
 
@@ -463,6 +622,19 @@ const logoutLoading = ref(false)
 const statsLoading = ref(false)
 const statsError = ref('')
 const recentTicketsLoading = ref(false)
+
+// Estado para a aba de tickets
+const allTicketsLoading = ref(false)
+const allTickets = ref<Array<{
+  id: string
+  title: string
+  description: string
+  status: string
+  priority: string
+  createdAt: string
+  author: string
+}>>([])
+const ticketsError = ref('')
 
 // Estado do modal de novo ticket
 const showNewTicketModal = ref(false)
@@ -574,6 +746,50 @@ const loadRecentTickets = async () => {
   }
 }
 
+// Função para carregar todos os tickets
+const loadAllTickets = async () => {
+  try {
+    allTicketsLoading.value = true
+    ticketsError.value = ''
+    
+    console.log('Carregando todos os tickets...')
+    
+    const tickets = await ticketsService.getAllTickets()
+    
+    // Transformar tickets da API para o formato do componente
+    allTickets.value = tickets.map(ticket => ({
+      id: ticket.uuid,
+      title: ticket.title,
+      description: ticket.description,
+      status: getStatusDisplay(ticket.status),
+      priority: getPriorityDisplay(ticket.priority),
+      createdAt: formatDate(ticket.createdAt),
+      author: ticket.creator?.name || ticket.creator?.email || 'Usuário não identificado'
+    }))
+    
+    console.log('Todos os tickets carregados:', allTickets.value.length)
+    
+  } catch (error: any) {
+    console.error('Erro ao carregar todos os tickets:', error)
+    
+    // Tratar diferentes tipos de erro
+    if (error.response?.status === 401) {
+      ticketsError.value = 'Sessão expirada. Faça login novamente.'
+    } else if (error.response?.status === 403) {
+      ticketsError.value = 'Sem permissão para acessar os tickets.'
+    } else if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
+      ticketsError.value = 'Erro de conexão com o servidor.'
+    } else {
+      ticketsError.value = error.response?.data?.message || 'Erro ao carregar tickets.'
+    }
+    
+    // Em caso de erro, manter array vazio
+    allTickets.value = []
+  } finally {
+    allTicketsLoading.value = false
+  }
+}
+
 // Funções auxiliares
 const getStatusDisplay = (status: string) => {
   switch (status) {
@@ -585,6 +801,19 @@ const getStatusDisplay = (status: string) => {
       return 'Fechado'
     default:
       return status
+  }
+}
+
+const getPriorityDisplay = (priority: string) => {
+  switch (priority) {
+    case 'low':
+      return 'Baixa'
+    case 'medium':
+      return 'Média'
+    case 'high':
+      return 'Alta'
+    default:
+      return priority
   }
 }
 
@@ -617,6 +846,19 @@ const getStatusClass = (status: string) => {
     case 'Em Progresso':
       return 'bg-yellow-100 text-yellow-800'
     case 'Fechado':
+      return 'bg-green-100 text-green-800'
+    default:
+      return 'bg-gray-100 text-gray-800'
+  }
+}
+
+const getPriorityClass = (priority: string) => {
+  switch (priority) {
+    case 'Alta':
+      return 'bg-red-100 text-red-800'
+    case 'Média':
+      return 'bg-yellow-100 text-yellow-800'
+    case 'Baixa':
       return 'bg-green-100 text-green-800'
     default:
       return 'bg-gray-100 text-gray-800'
@@ -734,6 +976,11 @@ const handleCreateTicket = async () => {
       loadRecentTickets()
     ])
     
+    // Se estiver na aba de tickets, recarregar também todos os tickets
+    if (activeTab.value === 'tickets') {
+      await loadAllTickets()
+    }
+    
     // Mostrar mensagem de sucesso
     showNotificationMessage('Ticket criado com sucesso! 🎉', 'success')
     
@@ -759,6 +1006,13 @@ const handleCreateTicket = async () => {
     creatingTicket.value = false
   }
 }
+
+// Watcher para carregar tickets quando a aba for ativada
+watch(activeTab, (newTab) => {
+  if (newTab === 'tickets' && allTickets.value.length === 0) {
+    loadAllTickets()
+  }
+})
 
 // Carregar dados do usuário e estatísticas
 onMounted(async () => {
@@ -791,3 +1045,13 @@ onMounted(async () => {
   ])
 })
 </script>
+
+<style scoped>
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+</style>
