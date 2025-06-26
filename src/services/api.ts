@@ -1,5 +1,4 @@
 import axios from 'axios'
-import { useAuth } from '../store/useAuth'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001',
@@ -11,7 +10,7 @@ const api = axios.create({
 
 // Interceptor para adicionar token nas requisições
 api.interceptors.request.use((config) => {
-  const token = useAuth.getState().token
+  const token = localStorage.getItem('token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -24,7 +23,8 @@ api.interceptors.response.use(
   (error) => {
     // Se receber 401 (Unauthorized), fazer logout automático
     if (error.response?.status === 401) {
-      useAuth.getState().logout()
+      localStorage.removeItem('token')
+      localStorage.removeItem('role')
       window.location.href = '/login'
     }
     

@@ -96,7 +96,7 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 // Agora usando a API real
-import { authService } from '../services/authService'
+import authService from '../services/authService'
 
 const router = useRouter()
 

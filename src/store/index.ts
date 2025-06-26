@@ -1,2 +1,2 @@
-// State management with Zustand
-export { useAuth } from './useAuth'
+// State management - now using localStorage directly
+// No store needed for this simple app

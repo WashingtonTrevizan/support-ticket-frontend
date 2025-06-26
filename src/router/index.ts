@@ -1,31 +1,12 @@
-// Router configuration
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import Login from '../pages/Login.vue'
 import Register from '../pages/Register.vue'
 import Dashboard from '../pages/Dashboard.vue'
-import TestLogin from '../pages/TestLogin.vue'
-import SimpleLogin from '../pages/SimpleLogin.vue'
-import WorkingLogin from '../pages/WorkingLogin.vue'
 
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
     redirect: '/login'
-  },
-  {
-    path: '/working-login',
-    name: 'WorkingLogin',
-    component: WorkingLogin
-  },
-  {
-    path: '/test-login',
-    name: 'TestLogin',
-    component: TestLogin
-  },
-  {
-    path: '/simple-login',
-    name: 'SimpleLogin',
-    component: SimpleLogin
   },
   {
     path: '/login',
@@ -41,10 +22,7 @@ const routes: RouteRecordRaw[] = [
     path: '/dashboard',
     name: 'Dashboard',
     component: Dashboard,
-    meta: { requiresAuth: true },
-    children: [
-      // Sub-rotas do dashboard podem ser adicionadas aqui
-    ]
+    meta: { requiresAuth: true }
   }
 ]
 
@@ -53,7 +31,7 @@ const router = createRouter({
   routes
 })
 
-// Guard de navegação para rotas autenticadas
+// Guard de navegação simples usando localStorage
 router.beforeEach((to, _from, next) => {
   const token = localStorage.getItem('token')
   const isAuthenticated = !!token

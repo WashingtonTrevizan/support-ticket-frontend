@@ -68,7 +68,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import authService from '../services/authService'
 
 const router = useRouter()
 
@@ -77,68 +77,47 @@ const password = ref('')
 const loading = ref(false)
 const error = ref('')
 
-// Função para salvar no store de forma segura
-const saveAuthData = (token: string, role: string) => {
-  try {
-    // Salvar no localStorage
-    localStorage.setItem('token', token)
-    localStorage.setItem('role', role)
-    localStorage.setItem('isAuthenticated', 'true')
-  } catch (err) {
-    console.error('Erro ao salvar dados de autenticação:', err)
-  }
-}
-
 const handleLogin = async () => {
   loading.value = true
   error.value = ''
   
   try {
-    console.log('Iniciando login...')
+    console.log('Fazendo login para:', email.value)
     
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001'
-    const loginData = {
+    const response = await authService.login({
       email: email.value,
       password: password.value
-    }
-    
-    console.log('Fazendo requisição para:', `${apiUrl}/auth/login`)
-    
-    // Fazer requisição para a API
-    const response = await axios.post(`${apiUrl}/auth/login`, loginData, {
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      timeout: 10000 // 10 segundos de timeout
     })
     
-    console.log('Resposta recebida:', response.data)
+    console.log('Login bem-sucedido!')
     
-    // Verificar se a resposta é positiva
-    if (response.status === 200 && response.data.token) {
-      console.log('Login bem-sucedido!')
-      
-      // Salvar dados de autenticação
-      saveAuthData(response.data.token, response.data.user?.role || 'client')
-      
-      // Redirecionar para dashboard
-      router.push('/dashboard')
-    } else {
-      error.value = 'Resposta inválida da API'
-    }
+    // Salvar no localStorage
+    localStorage.setItem('token', response.token)
+    localStorage.setItem('role', response.user.role)
+    
+    // Redirecionar para dashboard
+    router.push('/dashboard')
     
   } catch (err: any) {
     console.error('Erro no login:', err)
     
     if (err.response) {
-      // Erro da API
-      error.value = err.response.data?.message || `Erro: ${err.response.status} - ${err.response.statusText}`
+      const status = err.response.status
+      const message = err.response.data?.message || 'Erro desconhecido'
+      
+      if (status === 401) {
+        error.value = 'Email ou senha incorretos'
+      } else if (status === 400) {
+        error.value = 'Dados inválidos'
+      } else if (status >= 500) {
+        error.value = 'Erro no servidor. Tente novamente.'
+      } else {
+        error.value = `Erro: ${message}`
+      }
     } else if (err.request) {
-      // Erro de conexão
-      error.value = 'Não foi possível conectar com o servidor. Verifique se a API está rodando.'
+      error.value = 'Não foi possível conectar com o servidor.'
     } else {
-      // Erro genérico
-      error.value = err.message || 'Erro desconhecido'
+      error.value = 'Erro desconhecido'
     }
   } finally {
     loading.value = false
@@ -146,7 +125,10 @@ const handleLogin = async () => {
 }
 
 onMounted(() => {
-  console.log('Login component mounted')
-  console.log('API URL:', import.meta.env.VITE_API_URL || 'http://localhost:3001')
+  console.log('Login carregado')
+  // Se já estiver autenticado, redirecionar para dashboard
+  if (localStorage.getItem('token')) {
+    router.push('/dashboard')
+  }
 })
 </script>
