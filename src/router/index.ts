@@ -2,6 +2,7 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import Login from '../pages/Login.vue'
 import Register from '../pages/Register.vue'
 import Dashboard from '../pages/Dashboard.vue'
+import TicketDetails from '../pages/TicketDetails.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -22,6 +23,12 @@ const routes: RouteRecordRaw[] = [
     path: '/dashboard',
     name: 'Dashboard',
     component: Dashboard,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/ticket/:id',
+    name: 'TicketDetails',
+    component: TicketDetails,
     meta: { requiresAuth: true }
   }
 ]

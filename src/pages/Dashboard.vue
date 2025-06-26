@@ -397,7 +397,12 @@
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                  <tr v-for="ticket in allTickets" :key="ticket.id" class="hover:bg-gray-50 transition-colors">
+                  <tr 
+                    v-for="ticket in allTickets" 
+                    :key="ticket.id" 
+                    @click="navigateToTicket(ticket.id)"
+                    class="hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div>
                         <div class="text-xs text-gray-500 font-mono">#{{ ticket.id.substring(0, 8) }}</div>
@@ -611,10 +616,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import ticketsService, { type TicketStats } from '../services/ticketsService'
 
 const router = useRouter()
+const route = useRoute()
 
 // Estado da aplicação
 const activeTab = ref('dashboard')
@@ -1014,12 +1020,23 @@ watch(activeTab, (newTab) => {
   }
 })
 
+// Função para navegar para detalhes do ticket
+const navigateToTicket = (ticketId: string) => {
+  router.push(`/ticket/${ticketId}`)
+}
+
 // Carregar dados do usuário e estatísticas
 onMounted(async () => {
   // Carregar dados do localStorage
   const storedRole = localStorage.getItem('role')
   if (storedRole) {
     userRole.value = storedRole as 'client' | 'support'
+  }
+  
+  // Verificar se há parâmetro de query para definir a aba ativa
+  const tabParam = route.query.tab as string
+  if (tabParam && ['dashboard', 'tickets', 'profile'].includes(tabParam)) {
+    activeTab.value = tabParam
   }
   
   // Tentar extrair nome do usuário do token (se disponível)
@@ -1043,6 +1060,11 @@ onMounted(async () => {
     loadTicketStats(),
     loadRecentTickets()
   ])
+  
+  // Se a aba ativa for tickets, carregar todos os tickets
+  if (activeTab.value === 'tickets') {
+    await loadAllTickets()
+  }
 })
 </script>
 
