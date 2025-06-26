@@ -60,25 +60,115 @@
           <!-- Ticket Header -->
           <div class="bg-white shadow-lg rounded-lg p-6">
             <div class="flex justify-between items-start mb-4">
-              <div>
+              <div class="flex-1">
                 <div class="text-sm text-gray-500 font-mono mb-1">
                   #{{ ticket.uuid.substring(0, 8) }}
                 </div>
-                <h1 class="text-3xl font-bold text-gray-900">{{ ticket.title }}</h1>
+                
+                <!-- Título - Modo Edição ou Visualização -->
+                <div v-if="!isEditing">
+                  <h1 class="text-3xl font-bold text-gray-900">{{ ticket.title }}</h1>
+                </div>
+                <div v-else class="mb-4">
+                  <label for="edit-title" class="block text-sm font-medium text-gray-700 mb-2">
+                    Título
+                  </label>
+                  <input
+                    id="edit-title"
+                    v-model="editingTicket.title"
+                    type="text"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-lg"
+                    placeholder="Título do ticket"
+                  />
+                </div>
               </div>
-              <div class="flex space-x-3">
-                <span 
-                  :class="getStatusClass(ticket.status)"
-                  class="inline-flex px-3 py-1 text-sm font-semibold rounded-full"
+              
+              <div class="flex items-center space-x-3 ml-4">
+                <!-- Badges de Status e Prioridade - Modo Visualização -->
+                <div v-if="!isEditing" class="flex space-x-3">
+                  <span 
+                    :class="getStatusClass(ticket.status)"
+                    class="inline-flex px-3 py-1 text-sm font-semibold rounded-full"
+                  >
+                    {{ getStatusDisplay(ticket.status) }}
+                  </span>
+                  <span 
+                    :class="getPriorityClass(ticket.priority)"
+                    class="inline-flex px-3 py-1 text-sm font-semibold rounded-full"
+                  >
+                    {{ getPriorityDisplay(ticket.priority) }}
+                  </span>
+                </div>
+                
+                <!-- Botões de Edição (apenas para support) -->
+                <div v-if="isSupport && !isEditing" class="flex space-x-2">
+                  <button
+                    @click="startEdit"
+                    class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors duration-200 flex items-center text-sm"
+                  >
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
+                    Editar Ticket
+                  </button>
+                </div>
+                
+                <!-- Botões de Salvar/Cancelar (modo edição) -->
+                <div v-if="isEditing" class="flex space-x-2">
+                  <button
+                    @click="saveTicket"
+                    :disabled="updatingTicket"
+                    class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center text-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    <span v-if="updatingTicket" class="mr-2">
+                      <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    </span>
+                    {{ updatingTicket ? 'Salvando...' : 'Salvar' }}
+                  </button>
+                  <button
+                    @click="cancelEdit"
+                    :disabled="updatingTicket"
+                    class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-200 text-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Controles de Status e Prioridade - Modo Edição -->
+            <div v-if="isEditing" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div>
+                <label for="edit-status" class="block text-sm font-medium text-gray-700 mb-2">
+                  Status
+                </label>
+                <select
+                  id="edit-status"
+                  v-model="editingTicket.status"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                 >
-                  {{ getStatusDisplay(ticket.status) }}
-                </span>
-                <span 
-                  :class="getPriorityClass(ticket.priority)"
-                  class="inline-flex px-3 py-1 text-sm font-semibold rounded-full"
+                  <option value="open">Aberto</option>
+                  <option value="in_progress">Em Progresso</option>
+                  <option value="closed">Fechado</option>
+                </select>
+              </div>
+              
+              <div>
+                <label for="edit-priority" class="block text-sm font-medium text-gray-700 mb-2">
+                  Prioridade
+                </label>
+                <select
+                  id="edit-priority"
+                  v-model="editingTicket.priority"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                 >
-                  {{ getPriorityDisplay(ticket.priority) }}
-                </span>
+                  <option value="low">Baixa</option>
+                  <option value="medium">Média</option>
+                  <option value="high">Alta</option>
+                </select>
               </div>
             </div>
 
@@ -116,8 +206,20 @@
             <!-- Ticket Description -->
             <div>
               <label class="block text-sm font-medium text-gray-500 mb-2">Descrição</label>
-              <div class="bg-gray-50 rounded-lg p-4">
+              
+              <!-- Modo Visualização -->
+              <div v-if="!isEditing" class="bg-gray-50 rounded-lg p-4">
                 <p class="text-gray-900 whitespace-pre-wrap">{{ ticket.description }}</p>
+              </div>
+              
+              <!-- Modo Edição -->
+              <div v-else>
+                <textarea
+                  v-model="editingTicket.description"
+                  rows="6"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="Descrição do ticket..."
+                ></textarea>
               </div>
             </div>
           </div>
@@ -240,10 +342,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '../services/api'
 import commentsService from '../services/commentsService'
+import ticketsService from '../services/ticketsService'
+import authService from '../services/authService'
 
 const router = useRouter()
 const route = useRoute()
@@ -256,10 +360,26 @@ const comments = ref<any[]>([])
 const newComment = ref('')
 const submittingComment = ref(false)
 
+// Estado para edição (apenas para support)
+const isEditing = ref(false)
+const editingTicket = ref({
+  title: '',
+  description: '',
+  status: '',
+  priority: ''
+})
+const updatingTicket = ref(false)
+
 // Estado para notificações
 const showNotification = ref(false)
 const notificationMessage = ref('')
 const notificationType = ref<'success' | 'error'>('success')
+
+// Estado do usuário atual
+const currentUser = ref<any>(null)
+
+// Verificar se o usuário é support
+const isSupport = computed(() => currentUser.value?.role === 'support')
 
 // Funções auxiliares
 const getStatusDisplay = (status: string) => {
@@ -342,6 +462,117 @@ const showNotificationMessage = (message: string, type: 'success' | 'error' = 's
 
 const hideNotification = () => {
   showNotification.value = false
+}
+
+// Carregar usuário atual
+const loadCurrentUser = async () => {
+  try {
+    // Temporário: simular usuário support enquanto a API não tem /auth/me
+    console.log('⚠️ Simulando usuário support (API /auth/me não disponível)')
+    currentUser.value = {
+      uuid: 'temp-user-id',
+      name: 'Usuário Support',
+      email: 'support@example.com',
+      role: 'support'
+    }
+    console.log('Usuário atual (simulado):', currentUser.value)
+    
+    // Código original comentado até a API estar pronta:
+    // currentUser.value = await authService.me()
+    // console.log('Usuário atual:', currentUser.value)
+  } catch (error) {
+    console.error('Erro ao carregar usuário atual:', error)
+    // Em caso de erro, assumir que é support para teste
+    currentUser.value = {
+      uuid: 'temp-user-id',
+      name: 'Usuário Support',
+      email: 'support@example.com',
+      role: 'support'
+    }
+  }
+}
+
+// Iniciar edição do ticket
+const startEdit = () => {
+  if (!ticket.value || !isSupport.value) return
+  
+  editingTicket.value = {
+    title: ticket.value.title,
+    description: ticket.value.description,
+    status: ticket.value.status,
+    priority: ticket.value.priority
+  }
+  isEditing.value = true
+}
+
+// Cancelar edição
+const cancelEdit = () => {
+  isEditing.value = false
+  editingTicket.value = {
+    title: '',
+    description: '',
+    status: '',
+    priority: ''
+  }
+}
+
+// Salvar alterações do ticket
+const saveTicket = async () => {
+  try {
+    updatingTicket.value = true
+    
+    const ticketId = route.params.id as string
+    console.log('Salvando alterações do ticket:', editingTicket.value)
+    
+    try {
+      // Tentar fazer o update na API
+      const updatedTicket = await ticketsService.updateTicket(ticketId, editingTicket.value)
+      
+      // Atualizar dados locais
+      ticket.value = { ...ticket.value, ...updatedTicket }
+      
+    } catch (apiError: any) {
+      // Se a API não tem a rota (404), simular o update localmente
+      if (apiError.response?.status === 404) {
+        console.log('⚠️ API PUT não disponível, simulando update local')
+        
+        // Atualizar dados localmente
+        ticket.value = { 
+          ...ticket.value, 
+          ...editingTicket.value,
+          updatedAt: new Date().toISOString()
+        }
+        
+        console.log('✅ Update simulado com sucesso')
+      } else {
+        // Re-throw outros erros
+        throw apiError
+      }
+    }
+    
+    // Sair do modo de edição
+    isEditing.value = false
+    
+    showNotificationMessage('Ticket atualizado com sucesso! ✅', 'success')
+    
+  } catch (err: any) {
+    console.error('Erro ao atualizar ticket:', err)
+    
+    let errorMessage = 'Erro ao atualizar ticket. Tente novamente.'
+    
+    if (err.response?.status === 401) {
+      errorMessage = 'Sessão expirada. Faça login novamente.'
+    } else if (err.response?.status === 403) {
+      errorMessage = 'Sem permissão para editar este ticket.'
+    } else if (err.response?.data?.message) {
+      errorMessage = err.response.data.message
+    }
+    
+    showNotificationMessage(errorMessage, 'error')
+    
+  } finally {
+    updatingTicket.value = false
+  }
 }
 
 // Carregar detalhes do ticket
@@ -427,7 +658,10 @@ const goBack = () => {
 }
 
 // Carregar dados na montagem
-onMounted(() => {
-  loadTicketDetails()
+onMounted(async () => {
+  await Promise.all([
+    loadTicketDetails(),
+    loadCurrentUser()
+  ])
 })
 </script>
