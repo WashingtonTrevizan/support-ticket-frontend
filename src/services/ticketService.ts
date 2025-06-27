@@ -79,7 +79,6 @@ class TicketService {
         }
       } catch (statsError) {
         // Se não houver endpoint de stats, calcular manualmente
-        console.log('Endpoint de stats não disponível, calculando manualmente...')
       }
 
       // Buscar todos os tickets e calcular estatísticas

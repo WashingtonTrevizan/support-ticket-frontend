@@ -10,7 +10,23 @@
       @change-tab="activeTab = $event"
     />
 
-    <!-- Conteúdo Principal -->
+    <!-- Conteúdo P      // Transformar tickets da API para o formato do componente
+      allTickets.value = response.tickets.map(ticket => ({
+        id: ticket.uuid,
+        title: ticket.title,
+        description: ticket.description,
+        status: getStatusDisplay(ticket.status),
+        priority: getPriorityDisplay(ticket.priority),
+        createdAt: formatDate(ticket.createdAt),
+        author: ticket.creator?.name || ticket.creator?.email || 'Usuário não identificado'
+      }))
+      
+      console.log(`✅ Tickets paginados processados:`, {
+        total: allTickets.value.length,
+        totalPages: totalPages.value,
+        currentPage: currentPage.value,
+        sampleTicket: allTickets.value[0] || 'nenhum'
+      })
     <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
       <div class="px-4 py-6 sm:px-0">
         
@@ -52,6 +68,35 @@
 
         <!-- Tickets Tab -->
         <div v-if="activeTab === 'tickets'">
+          <!-- Debug: Botão temporário para forçar carregamento -->
+          <div class="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p class="text-sm text-yellow-800 mb-2">🔧 Debug: Estado atual dos tickets</p>
+            <div class="text-xs text-yellow-700 space-y-1">
+              <p>Tickets length: {{ allTickets.length }}</p>
+              <p>Loading: {{ allTicketsLoading }}</p>
+              <p>Error: {{ ticketsError || 'nenhum' }}</p>
+              <p>Página: {{ currentPage }}/{{ totalPages }}</p>
+              <p>Total: {{ totalTickets }}</p>
+              <p>Token: {{ hasToken ? '✅ Presente' : '❌ Ausente' }} | Backend: {{ backendUrl }}</p>
+              <details v-if="allTickets.length > 0">
+                <summary>Ver dados dos tickets ({{ allTickets.length }})</summary>
+                <pre class="text-xs mt-2 bg-gray-100 p-2 rounded">{{ JSON.stringify(allTickets.slice(0, 2), null, 2) }}</pre>
+              </details>
+            </div>
+            <button 
+              @click="loadAllTickets" 
+              class="mt-2 bg-yellow-600 text-white px-3 py-1 rounded text-sm hover:bg-yellow-700 mr-2"
+            >
+              🔄 Forçar Carregamento
+            </button>
+            <button 
+              @click="checkAuth" 
+              class="mt-2 bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+            >
+              🔍 Verificar Auth
+            </button>
+          </div>
+          
           <TicketsTable 
             :tickets="allTickets"
             :loading="allTicketsLoading"
@@ -159,6 +204,15 @@ const stats = ref<TicketStats>({
   total: 0
 })
 
+// Propriedades computadas para debug
+const hasToken = computed(() => {
+  return !!localStorage.getItem('token')
+})
+
+const backendUrl = computed(() => {
+  return import.meta.env.VITE_API_URL || 'http://localhost:3001'
+})
+
 // Tickets recentes (carregados da API)
 const recentTickets = ref<Array<{
   id: string
@@ -173,12 +227,20 @@ const loadTicketStats = async () => {
     statsLoading.value = true
     statsError.value = ''
     
+    console.log('Carregando estatísticas de tickets...')
+    
+    // Usar o serviço de tickets para buscar estatísticas
     const ticketStats = await ticketsService.getStats()
+    
+    // Atualizar estado
     stats.value = ticketStats
+    
+    console.log('Estatísticas carregadas:', stats.value)
     
   } catch (error: any) {
     console.error('Erro ao carregar estatísticas:', error)
     
+    // Tratar diferentes tipos de erro
     if (error.response?.status === 401) {
       statsError.value = 'Sessão expirada. Faça login novamente.'
     } else if (error.response?.status === 403) {
@@ -189,7 +251,13 @@ const loadTicketStats = async () => {
       statsError.value = error.response?.data?.message || 'Erro ao carregar dados.'
     }
     
-    stats.value = { open: 0, in_progress: 0, closed: 0, total: 0 }
+    // Manter valores zerados em caso de erro
+    stats.value = {
+      open: 0,
+      in_progress: 0,
+      closed: 0,
+      total: 0
+    }
   } finally {
     statsLoading.value = false
   }
@@ -200,8 +268,11 @@ const loadRecentTickets = async () => {
   try {
     recentTicketsLoading.value = true
     
+    console.log('Carregando tickets recentes...')
+    
     const tickets = await ticketsService.getRecentTickets()
     
+    // Transformar tickets da API para o formato do componente
     recentTickets.value = tickets.map(ticket => ({
       id: ticket.uuid,
       title: ticket.title,
@@ -209,8 +280,11 @@ const loadRecentTickets = async () => {
       createdAt: formatDate(ticket.createdAt)
     }))
     
+    console.log('Tickets recentes carregados:', recentTickets.value.length)
+    
   } catch (error: any) {
     console.error('Erro ao carregar tickets recentes:', error)
+    // Em caso de erro, manter array vazio
     recentTickets.value = []
   } finally {
     recentTicketsLoading.value = false
@@ -223,28 +297,75 @@ const loadAllTickets = async () => {
     allTicketsLoading.value = true
     ticketsError.value = ''
     
-    // Usar método paginado
-    const response = await ticketsService.getTicketsPaginated({
-      page: currentPage.value,
-      limit: limit.value
-    })
+    console.log(`🔄 Carregando tickets - Página ${currentPage.value}, Limite ${limit.value}`)
     
-    // Atualizar estado da paginação
-    totalTickets.value = response.total
-    totalPages.value = response.totalPages
-    currentPage.value = response.page
-    limit.value = response.limit
-    
-    // Transformar tickets da API para o formato do componente
-    allTickets.value = response.tickets.map(ticket => ({
-      id: ticket.uuid,
-      title: ticket.title,
-      description: ticket.description,
-      status: getStatusDisplay(ticket.status),
-      priority: getPriorityDisplay(ticket.priority),
-      createdAt: formatDate(ticket.createdAt),
-      author: ticket.creator?.name || ticket.creator?.email || 'Usuário não identificado'
-    }))
+    try {
+      // Tentar usar o método paginado primeiro
+      const response = await ticketsService.getTicketsPaginated({
+        page: currentPage.value,
+        limit: limit.value
+      })
+      
+      console.log('✅ Resposta da paginação:', response)
+      console.log('🔍 Tickets recebidos:', response.tickets)
+      console.log('🔍 Estrutura do primeiro ticket:', response.tickets[0])
+      
+      // Atualizar estado da paginação
+      totalTickets.value = response.total
+      totalPages.value = response.totalPages
+      currentPage.value = response.page
+      limit.value = response.limit
+      
+      // Transformar tickets da API para o formato do componente
+      allTickets.value = response.tickets.map(ticket => {
+        console.log('🔄 Transformando ticket:', ticket)
+        const transformed = {
+          id: ticket.uuid,
+          title: ticket.title,
+          description: ticket.description,
+          status: getStatusDisplay(ticket.status),
+          priority: getPriorityDisplay(ticket.priority),
+          createdAt: formatDate(ticket.createdAt),
+          author: ticket.creator?.name || ticket.creator?.email || 'Usuário não identificado'
+        }
+        console.log('✅ Ticket transformado:', transformed)
+        return transformed
+      })
+      
+      console.log('📋 Array final de tickets:', allTickets.value)
+      
+      console.log(`✅ Tickets carregados com paginação: ${allTickets.value.length} de ${totalTickets.value} total`)
+      
+    } catch (paginationError) {
+      console.warn('⚠️ Erro na paginação, tentando método tradicional:', paginationError)
+      
+      // Fallback: usar método tradicional se paginação falhar
+      const tickets = await ticketsService.getAllTickets()
+      
+      console.log('✅ Tickets carregados (fallback):', tickets.length)
+      
+      // Simular paginação local
+      const total = tickets.length
+      const startIndex = (currentPage.value - 1) * limit.value
+      const endIndex = startIndex + limit.value
+      const paginatedTickets = tickets.slice(startIndex, endIndex)
+      
+      totalTickets.value = total
+      totalPages.value = Math.ceil(total / limit.value)
+      
+      // Transformar tickets da API para o formato do componente
+      allTickets.value = paginatedTickets.map(ticket => ({
+        id: ticket.uuid,
+        title: ticket.title,
+        description: ticket.description,
+        status: getStatusDisplay(ticket.status),
+        priority: getPriorityDisplay(ticket.priority),
+        createdAt: formatDate(ticket.createdAt),
+        author: ticket.creator?.name || ticket.creator?.email || 'Usuário não identificado'
+      }))
+      
+      console.log(`✅ Tickets paginados localmente: ${allTickets.value.length} de ${totalTickets.value} total`)
+    }
     
   } catch (error: any) {
     console.error('❌ Erro ao carregar todos os tickets:', error)
@@ -260,6 +381,7 @@ const loadAllTickets = async () => {
       ticketsError.value = error.response?.data?.message || 'Erro ao carregar tickets.'
     }
     
+    // Em caso de erro, manter arrays vazios
     allTickets.value = []
     totalTickets.value = 0
     totalPages.value = 0
@@ -292,26 +414,34 @@ const handleGoToPage = (page: number) => {
 
 const handleChangeLimit = (newLimit: number) => {
   limit.value = newLimit
-  currentPage.value = 1
+  currentPage.value = 1 // Reset para primeira página
   loadAllTickets()
 }
 
 // Funções auxiliares
 const getStatusDisplay = (status: string) => {
   switch (status) {
-    case 'open': return 'Aberto'
-    case 'in_progress': return 'Em Progresso'
-    case 'closed': return 'Fechado'
-    default: return status
+    case 'open':
+      return 'Aberto'
+    case 'in_progress':
+      return 'Em Progresso'
+    case 'closed':
+      return 'Fechado'
+    default:
+      return status
   }
 }
 
 const getPriorityDisplay = (priority: string) => {
   switch (priority) {
-    case 'low': return 'Baixa'
-    case 'medium': return 'Média'
-    case 'high': return 'Alta'
-    default: return priority
+    case 'low':
+      return 'Baixa'
+    case 'medium':
+      return 'Média'
+    case 'high':
+      return 'Alta'
+    default:
+      return priority
   }
 }
 
@@ -337,20 +467,49 @@ const formatDate = (dateString: string) => {
   }
 }
 
+// Função para verificar autenticação (debug)
+const checkAuth = () => {
+  const token = localStorage.getItem('token')
+  const role = localStorage.getItem('role')
+  
+  console.log('🔍 Verificação de Autenticação:')
+  console.log('Token:', token ? `${token.substring(0, 20)}...` : 'Não encontrado')
+  console.log('Role:', role)
+  console.log('Backend URL:', import.meta.env.VITE_API_URL || 'http://localhost:3001')
+  
+  if (!token) {
+    alert('❌ Token não encontrado! Faça login novamente.')
+    router.push('/login')
+  } else {
+    alert('✅ Token encontrado! Verificando comunicação com API...')
+    // Fazer uma requisição de teste
+    loadAllTickets()
+  }
+}
+
 // Função de logout
 const handleLogout = async () => {
   logoutLoading.value = true
   
   try {
+    console.log('Fazendo logout...')
+    
+    // Limpar dados do localStorage
     localStorage.removeItem('token')
     localStorage.removeItem('role')
     localStorage.removeItem('isAuthenticated')
     
+    // Simular delay de API (opcional)
     await new Promise(resolve => setTimeout(resolve, 1000))
+    
+    console.log('Logout realizado com sucesso')
+    
+    // Redirecionar para login
     router.push('/login')
     
   } catch (error) {
     console.error('Erro durante logout:', error)
+    // Mesmo com erro, limpar dados locais e redirecionar
     localStorage.clear()
     router.push('/login')
   } finally {
@@ -373,6 +532,7 @@ const showNotificationMessage = (message: string, type: 'success' | 'error' = 's
   notificationType.value = type
   showNotification.value = true
   
+  // Auto-hide após 5 segundos
   setTimeout(() => {
     showNotification.value = false
   }, 5000)
@@ -386,6 +546,9 @@ const handleCreateTicket = async (formData: { title: string; description: string
   try {
     creatingTicket.value = true
     
+    console.log('Criando novo ticket:', formData)
+    
+    // Validar campos obrigatórios
     if (!formData.title.trim()) {
       showNotificationMessage('Por favor, digite um título para o ticket.', 'error')
       return
@@ -401,6 +564,7 @@ const handleCreateTicket = async (formData: { title: string; description: string
       return
     }
     
+    // Preparar dados do ticket
     const ticketData = {
       title: formData.title.trim(),
       description: formData.description.trim(),
@@ -408,24 +572,32 @@ const handleCreateTicket = async (formData: { title: string; description: string
       status: 'open' as const
     }
     
+    // Criar ticket usando o serviço
     await ticketsService.createTicket(ticketData)
     
+    console.log('Ticket criado com sucesso!')
+    
+    // Fechar modal
     closeNewTicketModal()
     
+    // Recarregar dados (estatísticas e tickets recentes)
     await Promise.all([
       loadTicketStats(),
       loadRecentTickets()
     ])
     
+    // Se estiver na aba de tickets, recarregar também todos os tickets
     if (activeTab.value === 'tickets') {
       await loadAllTickets()
     }
     
+    // Mostrar mensagem de sucesso
     showNotificationMessage('Ticket criado com sucesso! 🎉', 'success')
     
   } catch (error: any) {
     console.error('Erro ao criar ticket:', error)
     
+    // Tratar diferentes tipos de erro
     let errorMessage = 'Erro ao criar ticket. Tente novamente.'
     
     if (error.response?.status === 401) {
@@ -447,9 +619,23 @@ const handleCreateTicket = async (formData: { title: string; description: string
 
 // Watcher para carregar tickets quando a aba for ativada
 watch(activeTab, (newTab) => {
+  console.log('🔄 Mudou para aba:', newTab)
   if (newTab === 'tickets') {
+    console.log('📋 Carregando tickets para aba tickets...')
     loadAllTickets()
   }
+})
+
+// Debug: watch do estado dos tickets
+watch([allTickets, allTicketsLoading, ticketsError], ([tickets, loading, error]) => {
+  console.log('🎫 Estado dos tickets mudou:', {
+    ticketsCount: tickets.length,
+    loading,
+    error,
+    currentPage: currentPage.value,
+    totalTickets: totalTickets.value,
+    totalPages: totalPages.value
+  })
 })
 
 // Função para navegar para detalhes do ticket
@@ -475,20 +661,27 @@ onMounted(async () => {
   try {
     const token = localStorage.getItem('token')
     if (token) {
+      // Decodificar JWT (apenas a parte payload, sem verificar assinatura)
       const payload = JSON.parse(atob(token.split('.')[1]))
       if (payload.email) {
-        userName.value = payload.email.split('@')[0]
+        userName.value = payload.email.split('@')[0] // Usar parte antes do @
       }
     }
   } catch (error) {
     console.warn('Erro ao extrair nome do token:', error)
   }
   
+  console.log('Dashboard carregado para usuário:', userRole.value, userName.value)
+  
   // Carregar dados da API em paralelo
   await Promise.all([
     loadTicketStats(),
     loadRecentTickets(),
-    loadAllTickets()
+    loadAllTickets() // Sempre carregar tickets
   ])
+  
+  console.log('✅ Dashboard totalmente carregado!')
 })
 </script>
+
+

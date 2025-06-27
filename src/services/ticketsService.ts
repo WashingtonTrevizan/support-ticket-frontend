@@ -24,37 +24,59 @@ export interface TicketStats {
   closed: number
 }
 
+export interface PaginationParams {
+  page?: number
+  limit?: number
+  status?: 'open' | 'in_progress' | 'closed'
+  priority?: 'low' | 'medium' | 'high'
+  sort?: string
+}
+
+export interface PaginatedTicketsResponse {
+  tickets: Ticket[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
 export const ticketsService = {
   // Buscar estatísticas de tickets
   async getStats(): Promise<TicketStats> {
     try {
-      console.log('Buscando estatísticas de tickets...')
-      
-      // Buscar tickets por status
+      // Buscar tickets por status usando a nova estrutura da API
       const [openResponse, inProgressResponse, closedResponse] = await Promise.all([
         api.get('/api/v1/tickets?status=open'),
         api.get('/api/v1/tickets?status=in_progress'),
         api.get('/api/v1/tickets?status=closed')
       ])
 
-      // A API retorna os tickets diretamente como array
-      const openTickets = openResponse.data || []
-      const inProgressTickets = inProgressResponse.data || []
-      const closedTickets = closedResponse.data || []
+      // A API agora retorna { tickets: [...], pagination: {...} }
+      const getTicketsCount = (response: any) => {
+        if (response.tickets && Array.isArray(response.tickets)) {
+          return response.tickets.length
+        }
+        // Fallback para estrutura antiga
+        if (Array.isArray(response)) {
+          return response.length
+        }
+        return 0
+      }
+
+      const openCount = getTicketsCount(openResponse.data)
+      const inProgressCount = getTicketsCount(inProgressResponse.data)
+      const closedCount = getTicketsCount(closedResponse.data)
 
       const stats = {
-        open: Array.isArray(openTickets) ? openTickets.length : 0,
-        in_progress: Array.isArray(inProgressTickets) ? inProgressTickets.length : 0,
-        closed: Array.isArray(closedTickets) ? closedTickets.length : 0,
-        total: 0
+        open: openCount,
+        in_progress: inProgressCount,
+        closed: closedCount,
+        total: openCount + inProgressCount + closedCount
       }
-      
-      stats.total = stats.open + stats.in_progress + stats.closed
 
-      console.log('Estatísticas de tickets:', stats)
       return stats
     } catch (error) {
-      console.error('Erro ao buscar estatísticas de tickets:', error)
+      console.error('❌ Erro ao buscar estatísticas de tickets:', error)
       throw error
     }
   },
@@ -62,11 +84,9 @@ export const ticketsService = {
   // Buscar count de tickets abertos
   async getOpenTicketsCount(): Promise<number> {
     try {
-      console.log('Buscando count de tickets abertos...')
       const response = await api.get('/api/v1/tickets?status=open')
       const tickets = response.data || []
       const count = Array.isArray(tickets) ? tickets.length : 0
-      console.log('Count de tickets abertos:', count)
       return count
     } catch (error) {
       console.error('Erro ao buscar tickets abertos:', error)
@@ -77,10 +97,8 @@ export const ticketsService = {
   // Buscar todos os tickets
   async getAllTickets(): Promise<Ticket[]> {
     try {
-      console.log('Buscando todos os tickets...')
       const response = await api.get('/api/v1/tickets')
       const tickets = response.data || []
-      console.log('Tickets encontrados:', tickets.length)
       return Array.isArray(tickets) ? tickets : []
     } catch (error) {
       console.error('Erro ao buscar tickets:', error)
@@ -91,10 +109,18 @@ export const ticketsService = {
   // Buscar tickets recentes (últimos 5)
   async getRecentTickets(): Promise<Ticket[]> {
     try {
-      console.log('Buscando tickets recentes...')
-      const response = await api.get('/api/v1/tickets?limit=5&sort=createdAt:desc')
-      const tickets = response.data || []
-      console.log('Tickets recentes encontrados:', tickets.length)
+      const response = await api.get('/api/v1/tickets?page=1&limit=5')
+      
+      // A API pode retornar no formato paginado ou no formato simples
+      let tickets = []
+      if (response.data.tickets) {
+        // Formato paginado
+        tickets = response.data.tickets
+      } else if (Array.isArray(response.data)) {
+        // Formato simples (array direto)
+        tickets = response.data.slice(0, 5)
+      }
+      
       return Array.isArray(tickets) ? tickets : []
     } catch (error) {
       console.error('Erro ao buscar tickets recentes:', error)
@@ -114,9 +140,7 @@ export const ticketsService = {
   // Criar novo ticket
   async createTicket(ticketData: Omit<Ticket, 'uuid' | 'createdAt' | 'updatedAt' | 'UserUuid' | 'CompanyUuid' | 'creator'>): Promise<Ticket> {
     try {
-      console.log('Criando novo ticket:', ticketData)
       const response = await api.post('/api/v1/tickets', ticketData)
-      console.log('Ticket criado:', response.data)
       return response.data.data || response.data
     } catch (error) {
       console.error('Erro ao criar ticket:', error)
@@ -127,9 +151,7 @@ export const ticketsService = {
   // Atualizar ticket
   async updateTicket(id: string, ticketData: Partial<Ticket>): Promise<Ticket> {
     try {
-      console.log('Atualizando ticket:', id, ticketData)
       const response = await api.patch(`/api/v1/tickets/${id}`, ticketData)
-      console.log('Ticket atualizado:', response.data)
       return response.data.data || response.data
     } catch (error) {
       console.error('Erro ao atualizar ticket:', error)
@@ -140,11 +162,74 @@ export const ticketsService = {
   // Deletar ticket
   async deleteTicket(id: string): Promise<void> {
     try {
-      console.log('Deletando ticket:', id)
       await api.delete(`/api/v1/tickets/${id}`)
-      console.log('Ticket deletado com sucesso')
     } catch (error) {
       console.error('Erro ao deletar ticket:', error)
+      throw error
+    }
+  },
+
+  // Buscar todos os tickets com paginação
+  async getTicketsPaginated(params: PaginationParams = {}): Promise<PaginatedTicketsResponse> {
+    try {
+      const { page = 1, limit = 10, status, priority, sort } = params
+      
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      })
+      
+      if (status) queryParams.append('status', status)
+      if (priority) queryParams.append('priority', priority)
+      if (sort) queryParams.append('sort', sort)
+      
+      const response = await api.get(`/api/v1/tickets?${queryParams.toString()}`)
+      
+      
+      // Se a API retornar no formato novo com "pagination"
+      if (response.data.tickets && response.data.pagination) {
+        const { tickets, pagination } = response.data
+        const result = {
+          tickets: Array.isArray(tickets) ? tickets : [],
+          total: pagination.totalItems || 0,
+          page: pagination.currentPage || page,
+          limit: pagination.itemsPerPage || limit,
+          totalPages: pagination.totalPages || Math.ceil((pagination.totalItems || 0) / limit)
+        }
+        return result
+      }
+      
+      // Se a API retornar no formato antigo
+      if (response.data.tickets && response.data.total !== undefined) {
+        const result = {
+          tickets: Array.isArray(response.data.tickets) ? response.data.tickets : [],
+          total: response.data.total || 0,
+          page: response.data.page || page,
+          limit: response.data.limit || limit,
+          totalPages: response.data.totalPages || Math.ceil((response.data.total || 0) / limit)
+        }
+        return result
+      }
+      
+      // Fallback: se a API não retornar dados paginados, simular paginação
+      const allTickets = Array.isArray(response.data) ? response.data : []
+      const total = allTickets.length
+      const totalPages = Math.ceil(total / limit)
+      const startIndex = (page - 1) * limit
+      const endIndex = startIndex + limit
+      const tickets = allTickets.slice(startIndex, endIndex)
+      
+      const result = {
+        tickets,
+        total,
+        page,
+        limit,
+        totalPages
+      }
+      
+      return result
+    } catch (error) {
+      console.error('Erro ao buscar tickets paginados:', error)
       throw error
     }
   }

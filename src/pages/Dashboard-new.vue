@@ -52,6 +52,31 @@
 
         <!-- Tickets Tab -->
         <div v-if="activeTab === 'tickets'">
+          <!-- Debug: Botão temporário para forçar carregamento -->
+          <div class="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p class="text-sm text-yellow-800 mb-2">🔧 Debug: Estado atual dos tickets</p>
+            <div class="text-xs text-yellow-700 space-y-1">
+              <p>Tickets length: {{ allTickets.length }}</p>
+              <p>Loading: {{ allTicketsLoading }}</p>
+              <p>Error: {{ ticketsError || 'nenhum' }}</p>
+              <p>Página: {{ currentPage }}/{{ totalPages }}</p>
+              <p>Total: {{ totalTickets }}</p>
+              <p>Token: {{ hasToken ? '✅ Presente' : '❌ Ausente' }} | Backend: {{ backendUrl }}</p>
+            </div>
+            <button 
+              @click="loadAllTickets" 
+              class="mt-2 bg-yellow-600 text-white px-3 py-1 rounded text-sm hover:bg-yellow-700 mr-2"
+            >
+              🔄 Forçar Carregamento
+            </button>
+            <button 
+              @click="checkAuth" 
+              class="mt-2 bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+            >
+              🔍 Verificar Auth
+            </button>
+          </div>
+          
           <TicketsTable 
             :tickets="allTickets"
             :loading="allTicketsLoading"
@@ -159,6 +184,15 @@ const stats = ref<TicketStats>({
   total: 0
 })
 
+// Propriedades computadas para debug
+const hasToken = computed(() => {
+  return !!localStorage.getItem('token')
+})
+
+const backendUrl = computed(() => {
+  return import.meta.env.VITE_API_URL || 'http://localhost:3001'
+})
+
 // Tickets recentes (carregados da API)
 const recentTickets = ref<Array<{
   id: string
@@ -173,8 +207,10 @@ const loadTicketStats = async () => {
     statsLoading.value = true
     statsError.value = ''
     
+    console.log('Carregando estatísticas de tickets...')
     const ticketStats = await ticketsService.getStats()
     stats.value = ticketStats
+    console.log('Estatísticas carregadas:', stats.value)
     
   } catch (error: any) {
     console.error('Erro ao carregar estatísticas:', error)
@@ -199,6 +235,7 @@ const loadTicketStats = async () => {
 const loadRecentTickets = async () => {
   try {
     recentTicketsLoading.value = true
+    console.log('Carregando tickets recentes...')
     
     const tickets = await ticketsService.getRecentTickets()
     
@@ -208,6 +245,8 @@ const loadRecentTickets = async () => {
       status: getStatusDisplay(ticket.status),
       createdAt: formatDate(ticket.createdAt)
     }))
+    
+    console.log('Tickets recentes carregados:', recentTickets.value.length)
     
   } catch (error: any) {
     console.error('Erro ao carregar tickets recentes:', error)
@@ -223,11 +262,15 @@ const loadAllTickets = async () => {
     allTicketsLoading.value = true
     ticketsError.value = ''
     
+    console.log(`🔄 Carregando tickets - Página ${currentPage.value}, Limite ${limit.value}`)
+    
     // Usar método paginado
     const response = await ticketsService.getTicketsPaginated({
       page: currentPage.value,
       limit: limit.value
     })
+    
+    console.log('✅ Resposta da paginação:', response)
     
     // Atualizar estado da paginação
     totalTickets.value = response.total
@@ -245,6 +288,8 @@ const loadAllTickets = async () => {
       createdAt: formatDate(ticket.createdAt),
       author: ticket.creator?.name || ticket.creator?.email || 'Usuário não identificado'
     }))
+    
+    console.log(`✅ Tickets carregados: ${allTickets.value.length} de ${totalTickets.value} total`)
     
   } catch (error: any) {
     console.error('❌ Erro ao carregar todos os tickets:', error)
@@ -337,16 +382,37 @@ const formatDate = (dateString: string) => {
   }
 }
 
+// Função para verificar autenticação (debug)
+const checkAuth = () => {
+  const token = localStorage.getItem('token')
+  const role = localStorage.getItem('role')
+  
+  console.log('🔍 Verificação de Autenticação:')
+  console.log('Token:', token ? `${token.substring(0, 20)}...` : 'Não encontrado')
+  console.log('Role:', role)
+  console.log('Backend URL:', import.meta.env.VITE_API_URL || 'http://localhost:3001')
+  
+  if (!token) {
+    alert('❌ Token não encontrado! Faça login novamente.')
+    router.push('/login')
+  } else {
+    alert('✅ Token encontrado! Verificando comunicação com API...')
+    loadAllTickets()
+  }
+}
+
 // Função de logout
 const handleLogout = async () => {
   logoutLoading.value = true
   
   try {
+    console.log('Fazendo logout...')
     localStorage.removeItem('token')
     localStorage.removeItem('role')
     localStorage.removeItem('isAuthenticated')
     
     await new Promise(resolve => setTimeout(resolve, 1000))
+    console.log('Logout realizado com sucesso')
     router.push('/login')
     
   } catch (error) {
@@ -386,6 +452,8 @@ const handleCreateTicket = async (formData: { title: string; description: string
   try {
     creatingTicket.value = true
     
+    console.log('Criando novo ticket:', formData)
+    
     if (!formData.title.trim()) {
       showNotificationMessage('Por favor, digite um título para o ticket.', 'error')
       return
@@ -409,6 +477,8 @@ const handleCreateTicket = async (formData: { title: string; description: string
     }
     
     await ticketsService.createTicket(ticketData)
+    
+    console.log('Ticket criado com sucesso!')
     
     closeNewTicketModal()
     
@@ -447,9 +517,23 @@ const handleCreateTicket = async (formData: { title: string; description: string
 
 // Watcher para carregar tickets quando a aba for ativada
 watch(activeTab, (newTab) => {
+  console.log('🔄 Mudou para aba:', newTab)
   if (newTab === 'tickets') {
+    console.log('📋 Carregando tickets para aba tickets...')
     loadAllTickets()
   }
+})
+
+// Debug: watch do estado dos tickets
+watch([allTickets, allTicketsLoading, ticketsError], ([tickets, loading, error]) => {
+  console.log('🎫 Estado dos tickets mudou:', {
+    ticketsCount: tickets.length,
+    loading,
+    error,
+    currentPage: currentPage.value,
+    totalTickets: totalTickets.value,
+    totalPages: totalPages.value
+  })
 })
 
 // Função para navegar para detalhes do ticket
@@ -484,11 +568,15 @@ onMounted(async () => {
     console.warn('Erro ao extrair nome do token:', error)
   }
   
+  console.log('Dashboard carregado para usuário:', userRole.value, userName.value)
+  
   // Carregar dados da API em paralelo
   await Promise.all([
     loadTicketStats(),
     loadRecentTickets(),
     loadAllTickets()
   ])
+  
+  console.log('✅ Dashboard totalmente carregado!')
 })
 </script>

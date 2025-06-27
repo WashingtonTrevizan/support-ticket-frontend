@@ -66,30 +66,31 @@
     </div>
 
     <!-- Tabela de Tickets -->
-    <div v-else-if="tickets.length > 0" class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-          <tr>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              ID / Título
-            </th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Descrição
-            </th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Status
-            </th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Prioridade
-            </th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Autor
-            </th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Criado em
-            </th>
-          </tr>
-        </thead>
+    <div v-if="!loading && !error && tickets.length > 0">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                ID / Título
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Descrição
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Prioridade
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Autor
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Criado em
+              </th>
+            </tr>
+          </thead>
         <tbody class="bg-white divide-y divide-gray-200">
           <tr 
             v-for="ticket in tickets" 
@@ -99,29 +100,29 @@
           >
             <td class="px-6 py-4 whitespace-nowrap">
               <div>
-                <div class="text-xs text-gray-500 font-mono">#{{ ticket.id.substring(0, 8) }}</div>
-                <div class="text-sm font-medium text-gray-900 mt-1">{{ ticket.title }}</div>
+                <div class="text-xs text-gray-500 font-mono">#{{ (ticket.id || '').substring(0, 8) }}</div>
+                <div class="text-sm font-medium text-gray-900 mt-1">{{ ticket.title || 'Sem título' }}</div>
               </div>
             </td>
             <td class="px-6 py-4">
               <div class="text-sm text-gray-900 max-w-md">
-                <p class="line-clamp-2">{{ ticket.description }}</p>
+                <p class="line-clamp-2">{{ ticket.description || 'Sem descrição' }}</p>
               </div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
               <span 
-                :class="getStatusClass(ticket.status)"
+                :class="getStatusClass(ticket.status || '')"
                 class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
               >
-                {{ ticket.status }}
+                {{ ticket.status || 'Sem status' }}
               </span>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
               <span 
-                :class="getPriorityClass(ticket.priority)"
+                :class="getPriorityClass(ticket.priority || '')"
                 class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
               >
-                {{ ticket.priority }}
+                {{ ticket.priority || 'Sem prioridade' }}
               </span>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
@@ -129,25 +130,39 @@
                 <div class="flex-shrink-0 h-8 w-8">
                   <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
                     <span class="text-xs font-medium text-gray-600">
-                      {{ ticket.author.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) }}
+                      {{ (ticket.author || 'N/A').split(' ').map(n => n[0] || '').join('').toUpperCase().substring(0, 2) }}
                     </span>
                   </div>
                 </div>
                 <div class="ml-3">
-                  <div class="text-sm font-medium text-gray-900">{{ ticket.author }}</div>
+                  <div class="text-sm font-medium text-gray-900">{{ ticket.author || 'Usuário não identificado' }}</div>
                 </div>
               </div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-              {{ ticket.createdAt }}
+              {{ ticket.createdAt || 'Data não disponível' }}
             </td>
           </tr>
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Paginação -->
+      <Pagination 
+        v-if="props.showPagination"
+        :current-page="props.currentPage"
+        :total-pages="props.totalPages"
+        :total="props.total"
+        :limit="props.limit"
+        @previous="$emit('previous-page')"
+        @next="$emit('next-page')"
+        @go-to-page="$emit('go-to-page', $event)"
+        @change-limit="$emit('change-limit', $event)"
+      />
     </div>
 
     <!-- Mensagem quando não há tickets -->
-    <div v-else class="text-center p-12">
+    <div v-else-if="!loading && tickets.length === 0" class="text-center p-12">
       <div class="flex flex-col items-center">
         <span class="text-6xl mb-4">📋</span>
         <h3 class="text-lg font-medium text-gray-900 mb-2">Nenhum ticket encontrado</h3>
@@ -165,6 +180,8 @@
 </template>
 
 <script setup lang="ts">
+import Pagination from '../Shared/Pagination.vue'
+
 interface Ticket {
   id: string
   title: string
@@ -179,14 +196,31 @@ interface Props {
   tickets: Ticket[]
   loading: boolean
   error: string
+  // Paginação
+  showPagination?: boolean
+  currentPage?: number
+  totalPages?: number
+  total?: number
+  limit?: number
 }
 
-defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  showPagination: false,
+  currentPage: 1,
+  totalPages: 1,
+  total: 0,
+  limit: 10
+})
 
 defineEmits<{
   'new-ticket': []
   refresh: []
   'ticket-click': [ticketId: string]
+  // Eventos de paginação
+  'previous-page': []
+  'next-page': []
+  'go-to-page': [page: number]
+  'change-limit': [limit: number]
 }>()
 
 const getStatusClass = (status: string) => {
