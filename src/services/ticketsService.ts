@@ -128,7 +128,7 @@ export const ticketsService = {
   async updateTicket(id: string, ticketData: Partial<Ticket>): Promise<Ticket> {
     try {
       console.log('Atualizando ticket:', id, ticketData)
-      const response = await api.put(`/api/v1/tickets/${id}`, ticketData)
+      const response = await api.patch(`/api/v1/tickets/${id}`, ticketData)
       console.log('Ticket atualizado:', response.data)
       return response.data.data || response.data
     } catch (error) {

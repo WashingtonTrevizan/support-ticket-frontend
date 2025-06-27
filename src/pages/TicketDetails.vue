@@ -467,6 +467,10 @@ const hideNotification = () => {
 // Carregar usuário atual
 const loadCurrentUser = async () => {
   try {
+    // TODO: Quando a API /auth/me estiver pronta, descommentar e remover simulação
+    // currentUser.value = await authService.me()
+    // console.log('Usuário atual:', currentUser.value)
+    
     // Temporário: simular usuário support enquanto a API não tem /auth/me
     console.log('⚠️ Simulando usuário support (API /auth/me não disponível)')
     currentUser.value = {
@@ -477,9 +481,6 @@ const loadCurrentUser = async () => {
     }
     console.log('Usuário atual (simulado):', currentUser.value)
     
-    // Código original comentado até a API estar pronta:
-    // currentUser.value = await authService.me()
-    // console.log('Usuário atual:', currentUser.value)
   } catch (error) {
     console.error('Erro ao carregar usuário atual:', error)
     // Em caso de erro, assumir que é support para teste
@@ -524,31 +525,10 @@ const saveTicket = async () => {
     const ticketId = route.params.id as string
     console.log('Salvando alterações do ticket:', editingTicket.value)
     
-    try {
-      // Tentar fazer o update na API
-      const updatedTicket = await ticketsService.updateTicket(ticketId, editingTicket.value)
-      
-      // Atualizar dados locais
-      ticket.value = { ...ticket.value, ...updatedTicket }
-      
-    } catch (apiError: any) {
-      // Se a API não tem a rota (404), simular o update localmente
-      if (apiError.response?.status === 404) {
-        console.log('⚠️ API PUT não disponível, simulando update local')
-        
-        // Atualizar dados localmente
-        ticket.value = { 
-          ...ticket.value, 
-          ...editingTicket.value,
-          updatedAt: new Date().toISOString()
-        }
-        
-        console.log('✅ Update simulado com sucesso')
-      } else {
-        // Re-throw outros erros
-        throw apiError
-      }
-    }
+    const updatedTicket = await ticketsService.updateTicket(ticketId, editingTicket.value)
+    
+    // Atualizar dados locais
+    ticket.value = { ...ticket.value, ...updatedTicket }
     
     // Sair do modo de edição
     isEditing.value = false
