@@ -1,2 +1,4 @@
 // Export all comment components
-// Example: export { default as CommentList } from './CommentList.vue'
+export { default as CommentsSection } from './CommentsSection.vue'
+export { default as CommentsList } from './CommentsList.vue'
+export { default as CommentForm } from './CommentForm.vue'

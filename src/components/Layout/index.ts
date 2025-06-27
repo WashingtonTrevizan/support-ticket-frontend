@@ -1,2 +1,4 @@
 // Export all components from this directory
-// Example: export { default as ComponentName } from './ComponentName.vue'
+export { default as DashboardHeader } from './DashboardHeader.vue'
+export { default as DashboardNavigation } from './DashboardNavigation.vue'
+export { default as TicketDetailsHeader } from './TicketDetailsHeader.vue'
