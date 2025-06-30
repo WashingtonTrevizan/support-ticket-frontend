@@ -39,6 +39,12 @@
           >
             {{ getPriorityDisplay(ticket.priority) }}
           </span>
+          <span 
+            :class="getTypeClass(ticket.type)"
+            class="inline-flex px-3 py-1 text-sm font-semibold rounded-full"
+          >
+            {{ getTypeDisplay(ticket.type) }}
+          </span>
         </div>
         
         <!-- Botões de Edição (apenas para support) -->
@@ -81,7 +87,7 @@
     </div>
 
     <!-- Controles de Status e Prioridade - Modo Edição -->
-    <div v-if="isEditing" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <div v-if="isEditing" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
       <div>
         <label for="edit-status" class="block text-sm font-medium text-gray-700 mb-2">
           Status
@@ -109,6 +115,22 @@
           <option value="low">Baixa</option>
           <option value="medium">Média</option>
           <option value="high">Alta</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="edit-type" class="block text-sm font-medium text-gray-700 mb-2">
+          Tipo
+        </label>
+        <select
+          id="edit-type"
+          v-model="editingTicket.type"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+        >
+          <option value="bug">🐛 Bug</option>
+          <option value="suporte_tecnico">🛠️ Suporte Técnico</option>
+          <option value="solicitacao">📋 Solicitação</option>
+          <option value="sugestao_implementacao">💡 Sugestão de Implementação</option>
         </select>
       </div>
     </div>
@@ -172,6 +194,7 @@ interface Ticket {
   title: string
   status: string
   priority: string
+  type: string
   description: string
   creator: any
   createdAt: string
@@ -182,6 +205,7 @@ interface EditingTicket {
   title: string
   status: string
   priority: string
+  type: string
   description: string
 }
 
@@ -262,6 +286,36 @@ const getPriorityClass = (priority: string) => {
     case 'medium':
       return 'bg-yellow-100 text-yellow-800'
     case 'low':
+      return 'bg-green-100 text-green-800'
+    default:
+      return 'bg-gray-100 text-gray-800'
+  }
+}
+
+const getTypeDisplay = (type: string) => {
+  switch (type) {
+    case 'bug':
+      return '🐛 Bug'
+    case 'suporte_tecnico':
+      return '🛠️ Suporte Técnico'
+    case 'solicitacao':
+      return '📋 Solicitação'
+    case 'sugestao_implementacao':
+      return '💡 Sugestão de Implementação'
+    default:
+      return type || 'Sem tipo'
+  }
+}
+
+const getTypeClass = (type: string) => {
+  switch (type) {
+    case 'bug':
+      return 'bg-red-100 text-red-800'
+    case 'suporte_tecnico':
+      return 'bg-blue-100 text-blue-800'
+    case 'solicitacao':
+      return 'bg-purple-100 text-purple-800'
+    case 'sugestao_implementacao':
       return 'bg-green-100 text-green-800'
     default:
       return 'bg-gray-100 text-gray-800'

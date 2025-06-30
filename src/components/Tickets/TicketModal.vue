@@ -49,7 +49,7 @@
           </div>
 
           <!-- Campo Prioridade -->
-          <div class="mb-6">
+          <div class="mb-4">
             <label for="priority" class="block text-sm font-medium text-gray-700 mb-2">
               Prioridade *
             </label>
@@ -63,6 +63,25 @@
               <option value="low">🟢 Baixa</option>
               <option value="medium">🟡 Média</option>
               <option value="high">🔴 Alta</option>
+            </select>
+          </div>
+
+          <!-- Campo Tipo -->
+          <div class="mb-6">
+            <label for="type" class="block text-sm font-medium text-gray-700 mb-2">
+              Tipo *
+            </label>
+            <select
+              id="type"
+              v-model="form.type"
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="">Selecione o tipo</option>
+              <option value="bug">🐛 Bug</option>
+              <option value="suporte_tecnico">🛠️ Suporte Técnico</option>
+              <option value="solicitacao">📋 Solicitação</option>
+              <option value="sugestao_implementacao">💡 Sugestão de Implementação</option>
             </select>
           </div>
 
@@ -103,6 +122,7 @@ interface TicketForm {
   title: string
   description: string
   priority: '' | 'low' | 'medium' | 'high'
+  type: '' | 'bug' | 'suporte_tecnico' | 'solicitacao' | 'sugestao_implementacao'
 }
 
 interface Props {
@@ -120,7 +140,8 @@ const emit = defineEmits<{
 const form = ref<TicketForm>({
   title: '',
   description: '',
-  priority: ''
+  priority: '',
+  type: ''
 })
 
 const handleSubmit = () => {
@@ -134,7 +155,8 @@ watch(() => props.isOpen, (newValue) => {
     form.value = {
       title: '',
       description: '',
-      priority: ''
+      priority: '',
+      type: ''
     }
   }
 })

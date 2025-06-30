@@ -6,6 +6,7 @@ export interface Ticket {
   description: string
   status: 'open' | 'in_progress' | 'closed'
   priority: 'low' | 'medium' | 'high'
+  type: 'bug' | 'suporte_tecnico' | 'solicitacao' | 'sugestao_implementacao'
   createdAt: string
   updatedAt: string
   UserUuid: string

@@ -88,11 +88,13 @@ const editingTicket = ref<{
   description: string
   status: 'open' | 'in_progress' | 'closed'
   priority: 'low' | 'medium' | 'high'
+  type: 'bug' | 'suporte_tecnico' | 'solicitacao' | 'sugestao_implementacao'
 }>({
   title: '',
   description: '',
   status: 'open',
-  priority: 'low'
+  priority: 'low',
+  type: 'suporte_tecnico'
 })
 const updatingTicket = ref(false)
 
@@ -159,7 +161,8 @@ const startEdit = () => {
     title: ticket.value.title,
     description: ticket.value.description,
     status: ticket.value.status,
-    priority: ticket.value.priority
+    priority: ticket.value.priority,
+    type: ticket.value.type || 'suporte_tecnico'
   }
   isEditing.value = true
 }
@@ -171,7 +174,8 @@ const cancelEdit = () => {
     title: '',
     description: '',
     status: 'open',
-    priority: 'low'
+    priority: 'low',
+    type: 'suporte_tecnico'
   }
 }
 

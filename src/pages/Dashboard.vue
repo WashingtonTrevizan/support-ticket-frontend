@@ -10,8 +10,8 @@
       @change-tab="activeTab = $event"
     />
 
-    <!-- Conteúdo Principal -->
-    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <!-- Conteúdo Principal com padding-top para compensar header fixo e margin-top adicional -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 pt-24 md:pt-20 mt-5">
       <div class="px-4 py-6 sm:px-0">
         
         <!-- Dashboard Tab -->
@@ -71,6 +71,33 @@
           />
         </div>
 
+        <!-- My Tickets Tab (apenas para Support) -->
+        <div v-if="activeTab === 'my-tickets'">
+          <TicketsTable 
+            :tickets="myTickets"
+            :loading="myTicketsLoading"
+            :error="myTicketsError"
+            :show-pagination="true"
+            :current-page="myCurrentPage"
+            :total-pages="myTotalPages"
+            :total="myTotalTickets"
+            :limit="myLimit"
+            @new-ticket="openNewTicketModal"
+            @refresh="loadMyTickets"
+            @ticket-click="navigateToTicket"
+            @previous-page="handleMyPreviousPage"
+            @next-page="handleMyNextPage"
+            @go-to-page="handleMyGoToPage"
+            @change-limit="handleMyChangeLimit"
+          />
+        </div>
+
+        <!-- Users Tab (apenas para Support) -->
+        <div v-if="activeTab === 'users'" class="bg-white shadow-lg rounded-lg p-6">
+          <h2 class="text-2xl font-bold text-gray-900 mb-4">Gestão de Usuários</h2>
+          <p class="text-gray-600">Funcionalidade de gestão de usuários em desenvolvimento...</p>
+        </div>
+
         <!-- Profile Tab -->
         <div v-if="activeTab === 'profile'" class="bg-white shadow-lg rounded-lg p-6">
           <h2 class="text-2xl font-bold text-gray-900 mb-4">Perfil do Usuário</h2>
@@ -99,7 +126,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import ticketsService, { type TicketStats } from '../services/ticketsService'
 
@@ -127,6 +154,7 @@ const allTickets = ref<Array<{
   description: string
   status: string
   priority: string
+  type: string
   createdAt: string
   author: string
 }>>([])
@@ -138,6 +166,24 @@ const limit = ref(10)
 const totalTickets = ref(0)
 const totalPages = ref(0)
 
+// Estado para "Meus Tickets" (para usuários Support)
+const myTicketsLoading = ref(false)
+const myTickets = ref<Array<{
+  id: string
+  title: string
+  description: string
+  status: string
+  priority: string
+  type: string
+  createdAt: string
+  author: string
+}>>([])
+const myTicketsError = ref('')
+const myCurrentPage = ref(1)
+const myLimit = ref(10)
+const myTotalTickets = ref(0)
+const myTotalPages = ref(0)
+
 // Estado do modal de novo ticket
 const showNewTicketModal = ref(false)
 const creatingTicket = ref(false)
@@ -148,7 +194,7 @@ const notificationMessage = ref('')
 const notificationType = ref<'success' | 'error'>('success')
 
 // Dados do usuário (serão carregados do localStorage/token)
-const userRole = ref('client')
+const userRole = ref('support') // Temporariamente forçado para 'support' para testar
 const userName = ref('')
 
 // Estatísticas (serão carregadas da API)
@@ -242,6 +288,7 @@ const loadAllTickets = async () => {
       description: ticket.description,
       status: getStatusDisplay(ticket.status),
       priority: getPriorityDisplay(ticket.priority),
+      type: ticket.type || 'suporte_tecnico',
       createdAt: formatDate(ticket.createdAt),
       author: ticket.creator?.name || ticket.creator?.email || 'Usuário não identificado'
     }))
@@ -265,6 +312,59 @@ const loadAllTickets = async () => {
     totalPages.value = 0
   } finally {
     allTicketsLoading.value = false
+  }
+}
+
+// Função para carregar "Meus Tickets" (tickets atribuídos ao usuário support)
+const loadMyTickets = async () => {
+  try {
+    myTicketsLoading.value = true
+    myTicketsError.value = ''
+    
+    // Por enquanto, vamos usar a mesma API de tickets mas com filtro
+    // Você pode implementar uma endpoint específica para "meus tickets" depois
+    const response = await ticketsService.getTicketsPaginated({
+      page: myCurrentPage.value,
+      limit: myLimit.value
+      // Aqui você pode adicionar filtro por assignee quando implementar
+    })
+    
+    // Atualizar estado da paginação para "Meus Tickets"
+    myTotalTickets.value = response.total
+    myTotalPages.value = response.totalPages
+    myCurrentPage.value = response.page
+    myLimit.value = response.limit
+    
+    // Transformar tickets da API para o formato do componente
+    myTickets.value = response.tickets.map(ticket => ({
+      id: ticket.uuid,
+      title: ticket.title,
+      description: ticket.description,
+      status: getStatusDisplay(ticket.status),
+      priority: getPriorityDisplay(ticket.priority),
+      type: ticket.type || 'suporte_tecnico',
+      createdAt: formatDate(ticket.createdAt),
+      author: ticket.creator?.name || ticket.creator?.email || 'Usuário não identificado'
+    }))
+    
+  } catch (error: any) {
+    console.error('❌ Erro ao carregar meus tickets:', error)
+    
+    if (error.response?.status === 401) {
+      myTicketsError.value = 'Sessão expirada. Faça login novamente.'
+    } else if (error.response?.status === 403) {
+      myTicketsError.value = 'Sem permissão para acessar os tickets.'
+    } else if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
+      myTicketsError.value = 'Erro de conexão com o servidor.'
+    } else {
+      myTicketsError.value = error.response?.data?.message || 'Erro ao carregar meus tickets.'
+    }
+    
+    myTickets.value = []
+    myTotalTickets.value = 0
+    myTotalPages.value = 0
+  } finally {
+    myTicketsLoading.value = false
   }
 }
 
@@ -294,6 +394,34 @@ const handleChangeLimit = (newLimit: number) => {
   limit.value = newLimit
   currentPage.value = 1
   loadAllTickets()
+}
+
+// Funções de paginação para "Meus Tickets"
+const handleMyPreviousPage = () => {
+  if (myCurrentPage.value > 1) {
+    myCurrentPage.value--
+    loadMyTickets()
+  }
+}
+
+const handleMyNextPage = () => {
+  if (myCurrentPage.value < myTotalPages.value) {
+    myCurrentPage.value++
+    loadMyTickets()
+  }
+}
+
+const handleMyGoToPage = (page: number) => {
+  if (page >= 1 && page <= myTotalPages.value) {
+    myCurrentPage.value = page
+    loadMyTickets()
+  }
+}
+
+const handleMyChangeLimit = (newLimit: number) => {
+  myLimit.value = newLimit
+  myCurrentPage.value = 1
+  loadMyTickets()
 }
 
 // Funções auxiliares
@@ -382,7 +510,7 @@ const hideNotification = () => {
   showNotification.value = false
 }
 
-const handleCreateTicket = async (formData: { title: string; description: string; priority: 'low' | 'medium' | 'high' | '' }) => {
+const handleCreateTicket = async (formData: { title: string; description: string; priority: 'low' | 'medium' | 'high' | ''; type: 'bug' | 'suporte_tecnico' | 'solicitacao' | 'sugestao_implementacao' | '' }) => {
   try {
     creatingTicket.value = true
     
@@ -400,11 +528,17 @@ const handleCreateTicket = async (formData: { title: string; description: string
       showNotificationMessage('Por favor, selecione uma prioridade para o ticket.', 'error')
       return
     }
+
+    if (!formData.type) {
+      showNotificationMessage('Por favor, selecione um tipo para o ticket.', 'error')
+      return
+    }
     
     const ticketData = {
       title: formData.title.trim(),
       description: formData.description.trim(),
       priority: formData.priority,
+      type: formData.type,
       status: 'open' as const
     }
     
@@ -449,6 +583,8 @@ const handleCreateTicket = async (formData: { title: string; description: string
 watch(activeTab, (newTab) => {
   if (newTab === 'tickets') {
     loadAllTickets()
+  } else if (newTab === 'my-tickets') {
+    loadMyTickets()
   }
 })
 
@@ -467,7 +603,7 @@ onMounted(async () => {
   
   // Verificar se há parâmetro de query para definir a aba ativa
   const tabParam = route.query.tab as string
-  if (tabParam && ['dashboard', 'tickets', 'profile'].includes(tabParam)) {
+  if (tabParam && ['dashboard', 'tickets', 'my-tickets', 'users', 'profile'].includes(tabParam)) {
     activeTab.value = tabParam
   }
   
@@ -488,7 +624,9 @@ onMounted(async () => {
   await Promise.all([
     loadTicketStats(),
     loadRecentTickets(),
-    loadAllTickets()
+    loadAllTickets(),
+    // Carregar "Meus Tickets" também se o usuário for support
+    userRole.value === 'support' ? loadMyTickets() : Promise.resolve()
   ])
 })
 </script>

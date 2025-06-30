@@ -84,6 +84,9 @@
                 Prioridade
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Tipo
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Autor
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -126,16 +129,33 @@
               </span>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
+              <span 
+                :class="getTypeClass(ticket.type || '')"
+                class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
+              >
+                {{ getTypeDisplay(ticket.type || '') }}
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
               <div class="flex items-center">
                 <div class="flex-shrink-0 h-8 w-8">
-                  <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                    <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
                     <span class="text-xs font-medium text-gray-600">
-                      {{ (ticket.author || 'N/A').split(' ').map(n => n[0] || '').join('').toUpperCase().substring(0, 2) }}
+                      {{
+                      formatAuthorName(
+                        getAuthorName(ticket.author as string | TicketAuthor)
+                      )
+                      .split(' ')
+                      .map((n: string) => n[0] || '')
+                      .join('')
+                      .toUpperCase()
+                      .substring(0, 2)
+                      }}
                     </span>
-                  </div>
+                    </div>
                 </div>
                 <div class="ml-3">
-                  <div class="text-sm font-medium text-gray-900">{{ ticket.author || 'Usuário não identificado' }}</div>
+                  <div class="text-sm font-medium text-gray-900">{{ formatAuthorName(getAuthorName(ticket.author)) || 'Usuário não identificado' }}</div>
                 </div>
               </div>
             </td>
@@ -180,16 +200,29 @@
 </template>
 
 <script setup lang="ts">
+import { formatAuthorName } from './../../utils/textFormat'
 import Pagination from '../Shared/Pagination.vue'
+
+// Definir tipos auxiliares
+type TicketStatus = 'open' | 'in_progress' | 'closed' | 'Aberto' | 'Em Progresso' | 'Fechado'
+type TicketPriority = 'low' | 'medium' | 'high' | 'Baixa' | 'Média' | 'Alta'
+type TicketType = 'bug' | 'suporte_tecnico' | 'solicitacao' | 'sugestao_implementacao'
+
+interface TicketAuthor {
+  uuid: string
+  name: string
+  email: string
+}
 
 interface Ticket {
   id: string
   title: string
   description: string
-  status: string
-  priority: string
+  status: TicketStatus
+  priority: TicketPriority
+  type: TicketType
   createdAt: string
-  author: string
+  author: string | TicketAuthor // Pode ser string ou objeto
 }
 
 interface Props {
@@ -247,6 +280,46 @@ const getPriorityClass = (priority: string) => {
     default:
       return 'bg-gray-100 text-gray-800'
   }
+}
+
+const getTypeDisplay = (type: string) => {
+  switch (type) {
+    case 'bug':
+      return '🐛 Bug'
+    case 'suporte_tecnico':
+      return '🛠️ Suporte Técnico'
+    case 'solicitacao':
+      return '📋 Solicitação'
+    case 'sugestao_implementacao':
+      return '💡 Sugestão de Implementação'
+    default:
+      return 'Sem tipo'
+  }
+}
+
+const getTypeClass = (type: string) => {
+  switch (type) {
+    case 'bug':
+      return 'bg-red-100 text-red-800'
+    case 'suporte_tecnico':
+      return 'bg-blue-100 text-blue-800'
+    case 'solicitacao':
+      return 'bg-purple-100 text-purple-800'
+    case 'sugestao_implementacao':
+      return 'bg-green-100 text-green-800'
+    default:
+      return 'bg-gray-100 text-gray-800'
+  }
+}
+
+const getAuthorName = (author: string | TicketAuthor): string => {
+  if (typeof author === 'string') {
+    return author;
+  }
+  if (author && typeof author === 'object' && author.name) {
+    return author.name;
+  }
+  return 'N/A';
 }
 </script>
 
